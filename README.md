@@ -1,299 +1,92 @@
-# DATA 601 — Data Science Project
+# Predicting Next-Year GDP per Capita
 
-This repository contains our group project for **DATA 601 at the University of Calgary (UofC)**. The project follows the three-stage structure of the course, taking a dataset from initial exploration and visualization through predictive modelling and, finally, communicating insights through a data-driven story.
+This project explores whether a country's current-year economic, energy, infrastructure, urbanization, environmental, and country-level information can predict its GDP per capita in the following year. The analysis covers data cleaning, exploratory visualization, feature selection, regression modelling, and error analysis in a single [Jupyter notebook](notebooks/DATA601_Project.ipynb).
 
-## Project Overview
+The final model uses XGBoost with a log-transformed target. It achieves a test R² of **0.9782**, but its mean absolute error is slightly higher than a simple forecast that carries the current year's GDP per capita forward. Most of the model's predictive power comes from current-year GDP per capita, with limited additional contribution from the other indicators.
 
-The project is completed in three stages:
+## Data
 
-1. **Stage 1 — Visualize Your Data**
-2. **Stage 2 — Running a Model**
-3. **Stage 3 — Telling a Story with Data**
+The data comes from the [World Bank's World Development Indicators](https://databank.worldbank.org/source/world-development-indicators#advancedDownloadOptions).
 
-Our goal is to develop a clear question of interest, understand the data through meaningful visualizations, apply an appropriate predictive model, and communicate the results to a stakeholder who has a direct interest in the question.
+- **Coverage:** 193 countries and economies over 2006–2021.
+- **Processed dataset:** 3,088 country-year observations with 24 indicators, plus country name and year.
+- **Target:** Next-year GDP per capita, adjusted for purchasing power parity (PPP), in constant 2021 international dollars.
+- **Predictors:** Current-year GDP per capita, inflation, energy use, electricity access and consumption, emissions, internet use, population and urbanization measures, trade, and other development indicators.
 
----
+The original Excel export is reshaped into one row per country and year. The analysis focuses on 2006–2021 because indicator coverage declines after 2021, and excludes countries with any missing GDP per capita or GDP growth values during that period. Shifting GDP per capita forward within each country produces **2,895 modelling observations**, using predictor years 2006–2020 to predict outcomes in 2007–2021.
 
-## Stage 1: Visualize Your Data
+## Methodology
 
-**Due:** September 18  
-**Weight:** 20% of final mark
+1. **Explore the data:** Examine distributions, missing values, trends, and correlations between GDP per capita and development indicators.
+2. **Prepare predictors:** Forward-fill missing values within each country, fill remaining gaps with training-set medians, and retain missing-value indicators.
+3. **Select features:** Use correlation analysis, Random Forest permutation importance, and chronological validation to select 10 indicators, then add their missing-value flags and one-hot encoded country identifiers.
+4. **Compare models:** Evaluate Linear Regression, Decision Tree, Random Forest, and XGBoost using mean absolute error (MAE), root mean squared error (RMSE), and R².
+5. **Tune and evaluate:** Tune Random Forest and XGBoost with five expanding chronological cross-validation folds, test log-transformed targets, and evaluate the selected model on later years.
+6. **Inspect errors:** Compare against a persistence forecast and examine errors by year, GDP level, country, and size of annual GDP change.
 
-The first stage focuses on exploring and visualizing our chosen dataset.
+The initial split uses earlier years for training and later years for validation and testing:
 
-The computational notebook includes:
+| Split | Predictor years | Target years | Observations |
+|---|---|---|---:|
+| Training | 2006–2015 | 2007–2016 | 1,930 |
+| Validation | 2016–2017 | 2017–2018 | 386 |
+| Test | 2018–2020 | 2019–2021 | 579 |
 
-- An introduction to the dataset
-- Data cleaning and preparation
-- Exploratory data analysis
-- Key descriptive statistics
-- Appropriate data visualizations
-- Discussion of patterns, relationships, and potential questions raised by the data
+After model selection, XGBoost is refitted on the combined training and validation data. The selected parameters are 200 trees, maximum depth 5, learning rate 0.05, and subsample 1.0. Predictions are converted back from the log scale before evaluation.
 
-The emphasis is on the **organization, reasoning, and effectiveness of our visualizations**, rather than simply producing a large number of plots.
+## Results
 
-### Deliverable
+The notebook reports the following final results. MAE and RMSE are in constant 2021 international dollars per person.
 
-The Stage 1 computational notebook is submitted to the **D2L Project 1 folder**.
+| Model / evaluation set | MAE | RMSE | R² |
+|---|---:|---:|---:|
+| Final XGBoost + log target — training and validation combined | 426.45 | 841.13 | 0.9989 |
+| Final XGBoost + log target — test | 1,476.45 | 3,753.32 | 0.9782 |
+| Persistence forecast: next year equals this year — test | 1,399.39 | 3,837.94 | 0.9772 |
 
----
+Current-year GDP per capita accounts for roughly **97% of XGBoost's total feature gain**. The model largely captures persistence in GDP levels, and the other indicators add little predictive information in this setup. This does not establish causal relationships between those indicators and GDP.
 
-## Stage 2: Running a Model
+Errors are much larger when predicting the 2020 downturn and the 2021 rebound than when predicting 2019. High-income economies also have larger absolute errors, while relative errors are more similar across GDP levels. A sample-weighting experiment produced only small, mixed changes, so the original model was retained.
 
-**Due:** October 2  
-**Weight:** 20% of final mark
-
-In Stage 2, we build on the exploratory work from Stage 1 by using a predictive model to investigate a question of interest.
-
-The notebook includes:
-
-- A clearly defined modelling question
-- Justification for the selected model
-- Data preparation and feature selection
-- Model training
-- Model evaluation
-- Appropriate performance metrics and visualizations
-- Interpretation of the results
-- Discussion of limitations and potential next steps
-
-The objective is not simply to obtain the best possible prediction, but to use an appropriate model to answer a meaningful question with the available data.
-
-### Deliverable
-
-The Stage 2 computational notebook is submitted to the **D2L Project 2 folder**.
-
----
-
-## Stage 3: Telling a Story with Data
-
-**Presentation:** October 5  
-**Written report + notebook:** October 9
-
-### Weight
-
-| Component | Weight |
-|---|---:|
-| Written report | 20% |
-| Computational notebook | 2.5% |
-| Group presentation | 2.5% |
-| **Total** | **25%** |
-
-The final stage brings together the skills developed throughout the course.
-
-We use our dataset to tell a coherent, data-driven story to a stakeholder with a direct interest in the answer.
-
-The final project includes:
-
-1. **Problem statement**
-   - Clearly state the question we are trying to answer.
-   - Explain why the question matters and who has a stake in the answer.
-
-2. **Data description**
-   - Describe the dataset and its relevant variables.
-   - Explain any data cleaning or preprocessing.
-   - Use key visualizations to communicate important characteristics of the data.
-
-3. **Modelling**
-   - Apply at least one predictive model.
-   - Explain why the selected model is appropriate for the question and data.
-   - Evaluate and interpret the model's results.
-
-4. **Results and discussion**
-   - Explain what the analysis tells us about the original question.
-   - Connect the model results with the exploratory analysis.
-   - Discuss limitations and uncertainty.
-   - Identify reasonable next steps.
-
-Importantly, **weak or inconclusive results are still useful**. A model that does not produce strong results can reveal limitations in the data and motivate further investigation.
-
-### Deliverables
-
-The final project consists of:
-
-- A written report in Word, PDF, or another appropriate format
-- The computational notebook containing the code used to produce the analysis
-- A 3-minute group presentation
-
-The report and notebook are submitted to the **D2L Project 3 folder**.
-
----
+The model exceeds the notebook's R² goal of 0.95 but misses its MAE goal of less than 1,000. Its performance is consistent with forecasting stable GDP levels, with limited improvement over the persistence benchmark and difficulty anticipating sudden economic shocks. The test evaluates later observations for the same countries, rather than generalization to entirely unseen countries.
 
 ## Repository Structure
-
-The repository is organized as follows:
 
 ```text
 .
 ├── README.md
+├── requirements.txt
 ├── data/
-│   ├── raw/
-│   └── processed/
+│   ├── Data.xlsx                    # Original World Bank indicator export
+│   └── df_final.csv                 # Cleaned country-year dataset
 ├── notebooks/
-│   ├── project_1_visualization.ipynb
-│   ├── project_2_model.ipynb
-│   └── project_3_final.ipynb
-├── src/
-│   └── ...
-├── figures/
-│   └── ...
+│   └── DATA601_Project.ipynb        # Full analysis and saved outputs
 ├── report/
-│   └── final_report.pdf
+│   └── DATA601_Report.docx          # Written analysis
 └── presentation/
-    └── presentation.pdf
+    └── DATA601_Presentation.pptx    # Presentation of findings
 ```
 
-### Directory descriptions
+## Running the Analysis
 
-- **`data/raw/`** — Original, unmodified datasets.
-- **`data/processed/`** — Cleaned or transformed datasets used for analysis.
-- **`notebooks/`** — Computational notebooks for each project stage.
-- **`src/`** — Reusable Python code and helper functions.
-- **`figures/`** — Visualizations generated during the analysis.
-- **`report/`** — Final written report.
-- **`presentation/`** — Materials for the final presentation.
+The notebook was developed in **Google Colab** and currently uses Google Drive mounts and personal Drive paths. The source data is included in this repository.
 
----
+To run it in Colab:
 
-## Dataset
+1. Open [notebooks/DATA601_Project.ipynb](notebooks/DATA601_Project.ipynb) in Google Colab.
+2. Copy `data/Data.xlsx` to your Google Drive and update every Drive read/write path in the notebook to your own location, including the paths used for intermediate CSV and joblib files.
+3. Install `xgboost` if it is unavailable in the runtime, then run the cells in order. The notebook generates the processed dataset and intermediate modelling files before reloading them later.
 
-Our project uses:
-
-> **Dataset:** *[Dataset name]*
-
-The dataset was obtained from:
-
-> *[Source / URL]*
-
-### Why this dataset?
-
-We selected this dataset because:
-
-- *[Reason 1]*
-- *[Reason 2]*
-- *[Reason 3]*
-
-The dataset contains information about *[brief description of what the observations represent]* and allows us to investigate *[general topic/question]*.
-
----
-
-## Research Question
-
-### Primary Question
-
-> **[Insert your main research question here.]**
-
-### Motivation
-
-Our question is motivated by *[brief explanation of why the question matters]*.
-
-The primary stakeholder for this analysis is **[stakeholder]**, who may use the results to *[decision/action/use of findings]*.
-
----
-
-## Methodology
-
-Our analysis follows the general workflow:
-
-```text
-Raw Data
-   ↓
-Data Cleaning & Preparation
-   ↓
-Exploratory Data Analysis
-   ↓
-Data Visualization
-   ↓
-Research Question
-   ↓
-Predictive Model
-   ↓
-Model Evaluation
-   ↓
-Interpretation
-   ↓
-Data-Driven Conclusions
-```
-
-We will use appropriate statistical and machine-learning techniques based on the research question and characteristics of the dataset.
-
----
-
-## Technologies
-
-The project is primarily developed using:
-
-- Python
-- Jupyter Notebook
-- pandas
-- NumPy
-- Matplotlib
-- seaborn
-- scikit-learn
-
-Additional libraries may be added as required.
-
----
-
-## Reproducibility
-
-To reproduce the analysis:
-
-1. Clone this repository.
-2. Install the required Python dependencies.
-3. Obtain the dataset from the source described above.
-4. Place the raw data in `data/raw/`.
-5. Run the notebooks in order.
-
-A `requirements.txt` file will be provided once the project dependencies have been finalized.
+For a local Python environment:
 
 ```bash
-git clone <repository-url>
-cd <repository-name>
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install xgboost notebook
+python -m notebook notebooks/DATA601_Project.ipynb
 ```
 
----
+Before running locally, remove the `google.colab` imports and Drive mount calls, and replace all Drive paths with local input and output paths. From the notebook directory, the supplied inputs are `../data/Data.xlsx` and `../data/df_final.csv`; intermediate outputs can also be written to `../data/`. XGBoost and the Jupyter Notebook interface are installed separately above because they are not listed in `requirements.txt`.
 
-## Group Members
-
-| Name | Role |
-|---|---|
-| *[Name]* | *[Role / contribution]* |
-| *[Name]* | *[Role / contribution]* |
-| *[Name]* | *[Role / contribution]* |
-
----
-
-## Project Timeline
-
-| Date | Milestone |
-|---|---|
-| September 18 | Stage 1 — Visualization notebook due |
-| October 2 | Stage 2 — Modelling notebook due |
-| October 5 | 3-minute group presentation |
-| October 9 | Stage 3 — Final report and notebook due |
-
----
-
-## Status
-
-- [ ] Dataset selected
-- [ ] Research question defined
-- [ ] Stage 1 — Data cleaning
-- [ ] Stage 1 — Exploratory analysis
-- [ ] Stage 1 — Visualizations
-- [ ] Stage 2 — Model selection
-- [ ] Stage 2 — Model training
-- [ ] Stage 2 — Model evaluation
-- [ ] Stage 3 — Final analysis
-- [ ] Stage 3 — Written report
-- [ ] Stage 3 — Presentation
-- [ ] Final submission
-
----
-
-## Acknowledgements
-
-This project was completed as part of **DATA 601 at the University of Calgary**.
-
-Dataset and external resources are credited in the relevant notebooks and final report.
+The main libraries are pandas, NumPy, Matplotlib, seaborn, scikit-learn, XGBoost, openpyxl, and joblib. Saved notebook outputs can be viewed without rerunning the analysis.
